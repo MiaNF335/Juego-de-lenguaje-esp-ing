@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Traductor-Bot Pro</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+        }
+
+        .container {
+            background: #16213e;
+            padding: 30px;
+            border-radius: 20px;
+            display: inline-block;
+            min-width: 380px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .instrucciones {
+            text-align: left;
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        button {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: 0.3s;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #ff4d6d;
+            transform: scale(1.05);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #resultado {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            background: #1a1a2e;
+            min-height: 100px;
+        }
+
+        select {
+            padding: 8px;
+            border-radius: 5px;
+            background: #0f3460;
+            color: white;
+            border: 1px solid #e94560;
+            margin-bottom: 10px;
+        }
+
+        .score-box {
+            font-size: 1.5rem;
+            color: #4ecca3;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container" id="menu-previo">
+        <h1>🎙️ Traductor-Bot</h1>
+        <div class="instrucciones">
+            <h3>📖 Instrucciones:</h3>
+            <ol>
+                <li>Elige un nivel de dificultad.</li>
+                <li>Traduce 5 palabras al inglés.</li>
+                <li>¡Gana 10 puntos por cada acierto!</li>
+            </ol>
+        </div>
+        <p>Selecciona tu nivel:</p>
+        <select id="nivel-selector">
+            <option value="1">Principiante 🐣 (5 seg)</option>
+            <option value="2">Intermedio 🦾 (4 seg)</option>
+            <option value="3">Leyenda 🏆 (3 seg)</option>
+        </select>
+        <br>
+        <button onclick="mostrarJuego()">¡Empezar a Jugar! 🚀</button>
+    </div>
+
+    <div class="container hidden" id="zona-juego">
+        <div class="score-box">Puntos: <span id="puntos-actuales">0</span></div>
+        <h2 id="palabra-display">🤔 Palabra: ---</h2>
+        <button id="btn-grabar" onclick="comenzar()">🎤 Grabar Traducción</button>
+        <div id="resultado">Esperando grabación...</div>
+        <br>
+        <button style="background: #533483;" onclick="volverAlMenu()">⬅️ Volver al Menú</button>
+    </div>
+
+    <div class="container hidden" id="pantalla-final">
+        <h1>🏁 ¡Fin del Juego!</h1>
+        <p>Tu puntuación final es:</p>
+        <div class="score-box" style="font-size: 3rem;" id="puntos-finales">0</div>
+
+        <div id="seccion-progresar" class="hidden">
+            <p>🌟 ¡Lo hiciste genial! ¿Te animas al siguiente nivel?</p>
+            <button onclick="subirNivel()">🔥 Subir de Nivel</button>
+        </div>
+
+        <button style="background: #533483;" onclick="mostrarJuego()">Reintentar Nivel</button>
+        <br>
+        <button style="background: #0f3460;" onclick="volverAlMenu()">Salir al Menú</button>
+    </div>
+
+    <script>
+        const palabrasPorNivel = {
+            "1": ["Gato", "Sol", "Rojo", "Agua", "Pan"],
+            "2": ["Amarillo", "Ventana", "Playa", "Ciudad", "Queso"],
+            "3": ["Ardilla", "Mundo", "Horario", "Murciélago", "Cuchillo"]
+        };
+
+        let puntajeTotal = 0;
+        let indicePalabra = 0;
+        const totalRondas = 5;
+
+        function mostrarJuego() {
+            puntajeTotal = 0;
+            indicePalabra = 0;
+            document.getElementById('puntos-actuales').innerText = "0";
+            document.getElementById('menu-previo').classList.add('hidden');
+            document.getElementById('zona-juego').classList.remove('hidden');
+            document.getElementById('pantalla-final').classList.add('hidden');
+            cambiarPalabra();
+        }
+
+        function volverAlMenu() {
+            document.getElementById('menu-previo').classList.remove('hidden');
+            document.getElementById('zona-juego').classList.add('hidden');
+            document.getElementById('pantalla-final').classList.add('hidden');
+        }
+
+        function cambiarPalabra() {
+            if (indicePalabra >= totalRondas) {
+                finalizarJuego();
+                return;
+            }
+
+            const nivel = document.getElementById('nivel-selector').value;
+            const lista = palabrasPorNivel[nivel];
+            const palabra = lista[indicePalabra];
+
+            document.getElementById('palabra-display').innerText = "¿Cómo se dice: " + palabra.toUpperCase() + "?";
+            document.getElementById('palabra-display').dataset.actual = palabra;
+            document.getElementById('resultado').innerHTML = "Esperando grabación...";
+        }
+
+        async function comenzar() {
+            const nivel = document.getElementById('nivel-selector').value;
+            const palabra = document.getElementById('palabra-display').dataset.actual;
+            const resDiv = document.getElementById('resultado');
+
+            resDiv.innerHTML = "<b style='color: #e94560;'>🔴 Grabando... ¡Habla ahora!</b>";
+
+            try {
+                const response = await fetch('/procesar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ palabra: palabra, nivel: nivel })
+                });
+
+                const data = await response.json();
+                indicePalabra++;
+
+                if (data.resultado === "✅") {
+                    // MENSAJE CUANDO ACIERTA (Sin interpretación de IA para no ensuciar la pantalla)
+                    puntajeTotal += 10;
+                    document.getElementById('puntos-actuales').innerText = puntajeTotal;
+                    resDiv.innerHTML = `
+                <p style="font-size: 2rem; margin: 0;">${data.resultado}</p>
+                <p style="color: #4ecca3; font-weight: bold;">¡Excelente! Pronunciación perfecta. ✨</p>
+            `;
+                } else {
+                    // MENSAJE CUANDO SE EQUIVOCA (Aquí agregamos lo que entendió la IA)
+                    resDiv.innerHTML = `
+                <p style="font-size: 2rem; margin: 0;">${data.resultado}</p>
+                <p>La IA interpretó que dijiste: <span style="color: #ff4d60; font-weight: bold;">"${data.intento}"</span></p>
+                <p>Esperábamos: <b style="color: #4ecca3">${data.objetivo}</b></p>
+                <p style="font-size: 0.8rem; opacity: 0.7;">¡Intentalo de nuevo en la próxima! 💪</p>
+            `;
+                }
+
+                setTimeout(cambiarPalabra, 3500); // Le damos un poquito más de tiempo (3.5s) para leer el error
+
+            } catch (error) {
+                resDiv.innerHTML = "❌ Error: ¿Corriste app.py?";
+            }
+        }
+
+        function finalizarJuego() {
+            document.getElementById('zona-juego').classList.add('hidden');
+            document.getElementById('pantalla-final').classList.remove('hidden');
+            document.getElementById('puntos-finales').innerText = puntajeTotal;
+
+            const nivelActual = document.getElementById('nivel-selector').value;
+            // Si sacó más de 30 puntos y no está en nivel 3, sugerimos subir
+            if (puntajeTotal >= 30 && nivelActual < 3) {
+                document.getElementById('seccion-progresar').classList.remove('hidden');
+            } else {
+                document.getElementById('seccion-progresar').classList.add('hidden');
+            }
+        }
+
+        function subirNivel() {
+            const selector = document.getElementById('nivel-selector');
+            selector.value = (parseInt(selector.value) + 1).toString();
+            mostrarJuego();
+        }
+    </script>
+</body>
+
+</html>
